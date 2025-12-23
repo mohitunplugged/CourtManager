@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Court Manager Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+            background-color: #0f172a; /* Slate 900 */
+            color: #e2e8f0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        .player-card {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .player-card.active {
+            background-color: #059669; /* Emerald 600 */
+            color: white;
+            border-color: #34d399;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .game-card {
+            background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+        }
+        .tab-content {
+            display: none;
+            opacity: 0;
+            animation: fadeIn 0.2s ease-out forwards;
+        }
+        .tab-content.active-view {
+            display: block;
+        }
+        .nav-btn {
+            font-size: 0.7rem; 
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide {
+            animation: slideIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="pb-24">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-50 glass-panel shadow-xl border-b border-white/5 pb-2">
+        <div class="max-w-md mx-auto px-4 pt-3 pb-2 flex justify-between items-center">
+            <div>
+                <h1 class="text-lg font-bold text-white tracking-tight"><i class="fa-solid fa-shuttlecock mr-2 text-emerald-400"></i>Court Manager</h1>
+            </div>
+            <button onclick="resetSession()" class="text-xs bg-slate-800 hover:bg-slate-700 active:bg-slate-600 px-3 py-2 rounded-lg text-red-400 border border-slate-700 transition-colors">
+                <i class="fa-solid fa-rotate-right"></i>
+            </button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="max-w-md mx-auto px-4 mt-1">
+            <div class="grid grid-cols-3 gap-1 p-1 bg-slate-800/80 rounded-lg">
+                <button onclick="switchTab('app')" id="tab-app" class="nav-btn py-1.5 rounded-md text-white bg-slate-600 shadow-sm transition-all">
+                    Scheduler
+                </button>
+                <button onclick="switchTab('rules')" id="tab-rules" class="nav-btn py-1.5 rounded-md text-slate-400 hover:text-slate-200 transition-all">
+                    Rules
+                </button>
+                <button onclick="switchTab('howto')" id="tab-howto" class="nav-btn py-1.5 rounded-md text-slate-400 hover:text-slate-200 transition-all">
+                    How-To
+                </button>
+            </div>
+        </div>
+        
+        <!-- Session Info -->
+        <div class="max-w-md mx-auto px-4 mt-2">
+            <div id="sessionInfo" class="text-[10px] text-center text-slate-400 font-mono py-1 bg-slate-900/50 rounded border border-white/5 hidden">
+                Session Start: <span id="startTimeDisplay" class="text-emerald-400 font-bold">Waiting...</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto px-4 mt-4">
+
+        <!-- APP VIEW -->
+        <div id="view-app" class="tab-content active-view space-y-6">
+            <!-- Roster Section -->
+            <section>
+                <div class="flex justify-between items-end mb-3">
+                    <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500">Live Roster</h2>
+                    <span id="playerCount" class="text-[10px] bg-slate-800 border border-slate-700 text-slate-400 px-2 py-1 rounded-md font-mono">0/10 Checked In</span>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2" id="rosterGrid">
+                    <!-- Players injected by JS -->
+                </div>
+                <div class="flex items-center mt-2 space-x-2">
+                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                    <p class="text-[10px] text-slate-500">Tap to check in. Order matters for Game 1.</p>
+                </div>
+            </section>
+
+            <!-- Stats Summary -->
+            <section class="glass-panel rounded-xl p-4 shadow-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500">Distribution</h2>
+                    <div class="text-[10px] text-slate-500 bg-slate-800 px-2 py-1 rounded">Pro-Rata Logic</div>
+                </div>
+                <div id="statsGrid" class="space-y-2">
+                    <!-- Stats injected by JS -->
+                    <div class="text-center text-slate-500 py-4 text-xs">Waiting for check-ins...</div>
+                </div>
+            </section>
+
+            <!-- Timeline Section -->
+            <section>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500">Timeline</h2>
+                    <button onclick="copySchedule()" class="text-xs bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors shadow-lg shadow-emerald-900/20">
+                        <i class="fa-regular fa-clipboard mr-1.5"></i>Copy
+                    </button>
+                </div>
+                <div id="timeline" class="space-y-3 relative pb-8">
+                    <!-- Timeline injected by JS -->
+                </div>
+            </section>
+        </div>
+
+        <!-- RULES VIEW -->
+        <div id="view-rules" class="tab-content space-y-6 text-slate-300">
+            
+            <section class="glass-panel rounded-xl p-5 border-l-4 border-amber-500">
+                <h2 class="text-white font-bold text-lg mb-2"><i class="fa-solid fa-gavel mr-2"></i>Late Policy</h2>
+                <p class="text-sm leading-relaxed text-slate-400 mb-2">
+                    The session clock starts the moment the <strong>4th player checks in</strong>.
+                </p>
+                <ul class="list-disc list-inside text-sm text-slate-400 space-y-1">
+                    <li><strong>Grace Period:</strong> Arrive within 10 mins of start? You are treated as on-time (Equal Games).</li>
+                    <li><strong>Late Penalty:</strong> After grace period, 1 game docked for every 12 minutes late.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Scheduling Logic</h3>
+                
+                <div class="space-y-3">
+                    <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                        <div class="flex items-start">
+                            <div class="bg-blue-900/50 p-2 rounded text-blue-400 mr-3 mt-0.5">
+                                <i class="fa-solid fa-stopwatch"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-bold text-white">Dynamic Start Time</h4>
+                                <p class="text-xs text-slate-400 mt-1">The timeline automatically adjusts to whenever you start checking people in.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                        <div class="flex items-start">
+                            <div class="bg-amber-900/50 p-2 rounded text-amber-400 mr-3 mt-0.5">
+                                <i class="fa-solid fa-user-clock"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-bold text-white">Fairness Buffer</h4>
+                                <p class="text-xs text-slate-400 mt-1">
+                                    If you arrive 9 mins late, the system simulates that you were waiting from the start, so you get priority for the next game.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                        <div class="flex items-start">
+                            <div class="bg-purple-900/50 p-2 rounded text-purple-400 mr-3 mt-0.5">
+                                <i class="fa-solid fa-bolt"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-bold text-white">Streak Breaker Exception</h4>
+                                <p class="text-xs text-slate-400 mt-1">
+                                    A latecomer can play immediately if it prevents someone else from playing 3 games in a row.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- HOW-TO VIEW -->
+        <div id="view-howto" class="tab-content space-y-6 text-slate-300">
+            
+            <section>
+                <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Quick Start Guide</h3>
+                
+                <div class="space-y-6">
+                    <!-- Step 1 -->
+                    <div class="relative pl-6 border-l border-emerald-500/30">
+                        <div class="absolute -left-1.5 top-0 w-3 h-3 rounded-full bg-emerald-500"></div>
+                        <h4 class="text-sm font-bold text-white mb-1">1. Check-in First 4 Players</h4>
+                        <p class="text-xs text-slate-400 mb-2">The session timer stays at "Waiting..." until the 4th person is tapped. This marks T=0.</p>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="relative pl-6 border-l border-emerald-500/30">
+                        <div class="absolute -left-1.5 top-0 w-3 h-3 rounded-full bg-slate-600"></div>
+                        <h4 class="text-sm font-bold text-white mb-1">2. Late Arrivals & Grace Period</h4>
+                        <p class="text-xs text-slate-400 mb-2">If someone arrives 8 minutes after start:</p>
+                        <ul class="list-disc list-inside text-xs text-slate-400 space-y-1 ml-1">
+                            <li>Tap their name.</li>
+                            <li>Because they are within 10 mins, they are treated as "On Time".</li>
+                            <li>They will likely play Game 2.</li>
+                        </ul>
+                    </div>
+                    
+                     <!-- Step 3 -->
+                    <div class="relative pl-6 border-l border-emerald-500/30">
+                        <div class="absolute -left-1.5 top-0 w-3 h-3 rounded-full bg-slate-600"></div>
+                        <h4 class="text-sm font-bold text-white mb-1">3. Penalties</h4>
+                        <p class="text-xs text-slate-400 mb-2">If someone arrives 15 minutes after start:</p>
+                        <ul class="list-disc list-inside text-xs text-slate-400 space-y-1 ml-1">
+                            <li>They get a Red Badge (-1 Game).</li>
+                            <li>They join the back of the queue.</li>
+                        </ul>
+                    </div>
+
+                    <!-- Step 4 -->
+                    <div class="relative pl-6 border-l border-emerald-500/30">
+                        <div class="absolute -left-1.5 top-0 w-3 h-3 rounded-full bg-slate-600"></div>
+                        <h4 class="text-sm font-bold text-white mb-1">4. Share the Plan</h4>
+                        <p class="text-xs text-slate-400">Click <span class="bg-emerald-600 text-white px-1.5 py-0.5 rounded text-[10px]">Copy</span> to share on WhatsApp.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- View Switching ---
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active-view'));
+            ['app', 'rules', 'howto'].forEach(name => {
+                document.getElementById(`tab-${name}`).className = "nav-btn py-1.5 rounded-md text-slate-400 hover:text-slate-200 transition-all";
+            });
+            document.getElementById(`view-${tabName}`).classList.add('active-view');
+            document.getElementById(`tab-${tabName}`).className = "nav-btn py-1.5 rounded-md text-white bg-slate-600 shadow-sm transition-all";
+        }
+
+        // --- Configuration ---
+        const GAME_DURATION = 12; // minutes
+        const GAMES_BEFORE_BREAK = 3;
+        const BREAK_DURATION = 4; // minutes
+        const TOTAL_GAMES = 8; 
+        const GRACE_PERIOD_MINS = 10;
+        
+        // --- Initial Data ---
+        const initialPlayers = [
+            "Mohit Mahajan", "Ravi Sandhu", "Manoj Jain", "Nikhil Kacker",
+            "Gurmeet Singh", "Badal", "Rudra", "DK", "Goyal Sir", "Kulbir Singh"
+        ];
+
+        // --- State Management ---
+        let players = initialPlayers.map((name, index) => ({
+            id: index,
+            name: name,
+            present: false,
+            arrivalTime: null,
+            gamesPlayed: 0,
+            consecutiveStreak: 0,
+            restStreak: 0
+        }));
+
+        let schedule = [];
+
+        function init() {
+            renderRoster();
+            updateSchedule();
+        }
+
+        // --- DYNAMIC TIME LOGIC ---
+        
+        function getSessionStartTime() {
+            const presentPlayers = players.filter(p => p.present);
+            presentPlayers.sort((a, b) => a.arrivalTime - b.arrivalTime);
+            
+            if (presentPlayers.length < 4) {
+                return null; 
+            }
+            return presentPlayers[3].arrivalTime;
+        }
+
+        function getMinutesOffset(timestamp) {
+            if (!timestamp) return 0;
+            const start = getSessionStartTime();
+            if (!start) return 0; 
+            return (timestamp - start) / 60000; 
+        }
+
+        // --- Core Logic ---
+        function generateSchedule() {
+            let simPlayers = JSON.parse(JSON.stringify(players));
+            let newSchedule = [];
+            let currentTime = 0; 
+
+            const sessionStartTimestamp = getSessionStartTime();
+
+            for (let gameIdx = 1; gameIdx <= TOTAL_GAMES; gameIdx++) {
+                
+                // Breaks
+                if (gameIdx > 1 && (gameIdx - 1) % GAMES_BEFORE_BREAK === 0) {
+                    newSchedule.push({
+                        type: 'break',
+                        startTimeOffset: currentTime,
+                        endTimeOffset: currentTime + BREAK_DURATION
+                    });
+                    currentTime += BREAK_DURATION;
+                }
+
+                // Filter Present
+                let availableCandidates = simPlayers.filter(p => p.present);
+                
+                // IMPORTANT: For Game 1 selection, we must use REAL Arrival Time to respect the "First 4" check-in order.
+                // We do NOT use grace period logic for the sort order of Game 1, only for scoring later.
+                availableCandidates.sort((a, b) => a.arrivalTime - b.arrivalTime);
+
+                let selectedIds = [];
+
+                if (availableCandidates.length < 4) {
+                    newSchedule.push({
+                        type: 'game',
+                        id: gameIdx,
+                        startTimeOffset: currentTime,
+                        endTimeOffset: currentTime + GAME_DURATION,
+                        players: [],
+                        error: "Need 4+ players"
+                    });
+                } else if (gameIdx === 1) {
+                    // HARD CONSTRAINT: First 4 physical check-ins
+                    selectedIds = availableCandidates.slice(0, 4).map(p => p.id);
+                } else {
+                    // --- SCORING ALGORITHM ---
+                    let candidates = availableCandidates.map(p => {
+                        let score = 0;
+                        
+                        // 1. QUEUE LOGIC
+                        score += (p.restStreak * 100);
+
+                        // 2. CONSECUTIVE PLAY
+                        if (p.consecutiveStreak === 1) score += 40; 
+                        if (p.consecutiveStreak >= 2) score -= 500; 
+
+                        // 3. TIE BREAKER
+                        score -= (p.gamesPlayed * 5);
+                        score += Math.random() * 2;
+
+                        return { id: p.id, score: score };
+                    });
+
+                    candidates.sort((a, b) => b.score - a.score);
+                    selectedIds = candidates.slice(0, 4).map(c => c.id);
+                }
+
+                if (selectedIds.length === 4) {
+                    newSchedule.push({
+                        type: 'game',
+                        id: gameIdx,
+                        startTimeOffset: currentTime,
+                        endTimeOffset: currentTime + GAME_DURATION,
+                        players: selectedIds
+                    });
+
+                    simPlayers.forEach(p => {
+                        if (selectedIds.includes(p.id)) {
+                            p.gamesPlayed++;
+                            p.consecutiveStreak++;
+                            p.restStreak = 0;
+                        } else {
+                            if (p.present) {
+                                // --- REST CREDIT LOGIC WITH GRACE PERIOD ---
+                                let effectiveArrivalTime = p.arrivalTime;
+                                
+                                // Apply Grace Period Logic
+                                if (sessionStartTimestamp) {
+                                    const diff = p.arrivalTime - sessionStartTimestamp;
+                                    // If arrival is within 10 mins (and positive), snap to start
+                                    if (diff > 0 && diff <= GRACE_PERIOD_MINS * 60000) {
+                                        effectiveArrivalTime = sessionStartTimestamp;
+                                    }
+                                }
+                                
+                                // Calculate offset based on Effective Time
+                                let arrivalMinutesFromStart = 0;
+                                if (sessionStartTimestamp) {
+                                    arrivalMinutesFromStart = Math.max(0, (effectiveArrivalTime - sessionStartTimestamp) / 60000);
+                                }
+                                
+                                // Check if player was "effectively" present during this game block
+                                if (arrivalMinutesFromStart <= currentTime) {
+                                    p.consecutiveStreak = 0;
+                                    p.restStreak++;
+                                } else {
+                                    // Actually Late (Outside grace period)
+                                    p.consecutiveStreak = 0;
+                                    p.restStreak = 0; 
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                currentTime += GAME_DURATION;
+            }
+
+            return { schedule: newSchedule, finalStats: simPlayers };
+        }
+
+        // --- Interaction Handlers ---
+        function togglePlayer(id) {
+            const player = players.find(p => p.id === id);
+            player.present = !player.present;
+            if (player.present) player.arrivalTime = Date.now();
+            else player.arrivalTime = null;
+            renderRoster();
+            updateSchedule();
+            updateSessionInfo();
+        }
+
+        function updateSchedule() {
+            const result = generateSchedule();
+            schedule = result.schedule;
+            renderTimeline();
+            renderStats(result.finalStats);
+            updateHeaderCount();
+        }
+
+        function resetSession() {
+            if(confirm("Start new session? This clears all check-ins.")) {
+                players.forEach(p => {
+                    p.present = false;
+                    p.arrivalTime = null;
+                });
+                renderRoster();
+                updateSchedule();
+                updateSessionInfo();
+            }
+        }
+
+        function copySchedule() {
+            let text = "🏸 *Badminton Schedule* 🏸\n\n";
+            schedule.forEach(item => {
+                const timeStart = formatTime(item.startTimeOffset);
+                if (item.type === 'break') {
+                    text += `⏸ *Break* (${timeStart})\n\n`;
+                } else if (item.players.length > 0) {
+                    const pNames = item.players.map(id => {
+                        return players.find(p => p.id === id).name.split(" ")[0];
+                    }).join(", ");
+                    text += `G${item.id} (${timeStart}): ${pNames}\n`;
+                }
+            });
+            
+            const tempInput = document.createElement("textarea");
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+            
+            const btn = document.querySelector('button[onclick="copySchedule()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<i class="fa-solid fa-check mr-1.5"></i>Copied`;
+            btn.classList.add('bg-slate-700');
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.classList.remove('bg-slate-700');
+            }, 1500);
+        }
+
+        // --- Rendering ---
+        function renderRoster() {
+            const grid = document.getElementById('rosterGrid');
+            grid.innerHTML = '';
+            
+            const sortedPlayers = [...players].sort((a, b) => {
+                if (a.present && !b.present) return -1;
+                if (!a.present && b.present) return 1;
+                if (a.present && b.present) return a.arrivalTime - b.arrivalTime;
+                return a.id - b.id;
+            });
+
+            sortedPlayers.forEach(p => {
+                const btn = document.createElement('div');
+                let info = "";
+                
+                if (p.present) {
+                     const minutesLate = Math.max(0, getMinutesOffset(p.arrivalTime));
+                     
+                     // Penalty Logic for UI
+                     // If within grace period, treat minutesLate as 0 for penalty calc
+                     let effectiveLate = minutesLate;
+                     if (minutesLate <= GRACE_PERIOD_MINS) effectiveLate = 0;
+
+                     const penalty = Math.floor(effectiveLate / 12);
+                     
+                     if (penalty > 0) {
+                         info = `<span class="text-[9px] bg-red-900/50 text-red-300 px-1.5 py-0.5 rounded ml-2">-${penalty} Games</span>`;
+                     } else {
+                         // Check rank
+                         const r = players.filter(pl => pl.present && pl.arrivalTime <= p.arrivalTime).length;
+                         info = `<span class="text-[9px] font-mono opacity-50 ml-2">#${r}</span>`;
+                     }
+                }
+
+                btn.className = `player-card p-3 rounded-lg border text-sm font-medium cursor-pointer flex justify-between items-center select-none ${p.present ? 'active border-emerald-500' : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-800'}`;
+                btn.onclick = () => togglePlayer(p.id);
+                
+                btn.innerHTML = `
+                    <div class="flex items-center">
+                        <i class="fa-solid ${p.present ? 'fa-circle-check' : 'fa-circle'} mr-2 text-[10px] ${p.present ? 'text-white' : 'text-slate-600'}"></i>
+                        <span>${p.name.split(' ')[0]} ${p.name.split(' ')[1] ? p.name.split(' ')[1][0] + '.' : ''}</span>
+                    </div>
+                    ${info}
+                `;
+                grid.appendChild(btn);
+            });
+        }
+
+        function renderTimeline() {
+            const container = document.getElementById('timeline');
+            container.innerHTML = '';
+            const presentCount = players.filter(p => p.present).length;
+
+            if (presentCount < 4) {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-10 opacity-40">
+                        <i class="fa-solid fa-users text-4xl mb-3"></i>
+                        <p class="text-sm">Need ${4 - presentCount} more players</p>
+                    </div>`;
+                return;
+            }
+
+            schedule.forEach((item, index) => {
+                const el = document.createElement('div');
+                const startTimeStr = formatTime(item.startTimeOffset);
+                el.style.animationDelay = `${index * 50}ms`;
+
+                if (item.type === 'break') {
+                    el.className = 'flex items-center justify-center py-3 my-2 bg-slate-800/30 rounded border-dashed border border-slate-700 text-slate-500 text-[10px] uppercase tracking-widest animate-slide';
+                    el.innerHTML = `<i class="fa-solid fa-clock mr-2"></i> Rest Break (${BREAK_DURATION}m) • ${startTimeStr}`;
+                } else {
+                    if (item.players.length < 4) {
+                        el.className = 'game-card p-3 rounded-lg border-l-2 border-red-500 opacity-60 animate-slide';
+                        el.innerHTML = `<div class="text-red-400 font-bold text-xs">Game ${item.id} • Not enough players</div>`;
+                    } else {
+                        const pNames = item.players.map(id => {
+                            const p = players.find(x => x.id === id);
+                            return p.name.split(' ')[0];
+                        });
+                        
+                        el.className = 'game-card p-3 rounded-lg border-l-2 border-emerald-500 shadow-lg animate-slide';
+                        el.innerHTML = `
+                            <div class="flex justify-between items-start mb-2 border-b border-white/5 pb-2">
+                                <div class="flex items-center">
+                                    <div class="bg-emerald-900/50 text-emerald-400 font-bold px-2 py-0.5 rounded text-xs mr-2">G${item.id}</div>
+                                    <span class="text-xs text-slate-400 font-mono">${startTimeStr}</span>
+                                </div>
+                                <span class="text-[10px] text-slate-500 uppercase tracking-wider">12 min</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-y-1 gap-x-4">
+                                ${pNames.map(name => `
+                                    <div class="flex items-center text-sm text-slate-200">
+                                        <i class="fa-solid fa-user text-[8px] text-slate-600 mr-2"></i>
+                                        ${name}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `;
+                    }
+                }
+                container.appendChild(el);
+            });
+        }
+
+        function renderStats(simPlayers) {
+            const grid = document.getElementById('statsGrid');
+            if (!simPlayers || simPlayers.filter(p => p.present).length === 0) {
+                grid.innerHTML = '<div class="text-center text-slate-500 py-4 text-xs">No active players</div>';
+                return;
+            }
+            grid.innerHTML = '';
+            const activeStats = simPlayers.filter(p => p.present).sort((a, b) => b.gamesPlayed - a.gamesPlayed);
+            activeStats.forEach(p => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between text-xs py-1.5 border-b border-white/5 last:border-0';
+                const maxGames = activeStats[0].gamesPlayed || 1;
+                const percentage = (p.gamesPlayed / maxGames) * 100;
+                let colorClass = "bg-slate-600";
+                if (p.gamesPlayed >= 5) colorClass = "bg-emerald-500";
+                else if (p.gamesPlayed <= 2) colorClass = "bg-amber-600";
+                row.innerHTML = `
+                    <div class="w-24 truncate text-slate-300 font-medium">${p.name.split(' ')[0]}</div>
+                    <div class="flex-1 mx-3 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                        <div class="h-full ${colorClass} rounded-full" style="width: ${percentage}%"></div>
+                    </div>
+                    <div class="w-6 text-right font-mono text-slate-400">${p.gamesPlayed}</div>
+                `;
+                grid.appendChild(row);
+            });
+        }
+
+        function updateHeaderCount() {
+            const count = players.filter(p => p.present).length;
+            const badge = document.getElementById('playerCount');
+            badge.innerText = `${count} Checked In`;
+            if (count >= 4) {
+                badge.className = "text-[10px] bg-emerald-900/30 border border-emerald-800 text-emerald-400 px-2 py-1 rounded-md font-mono transition-colors";
+            } else {
+                badge.className = "text-[10px] bg-red-900/20 border border-red-900 text-red-400 px-2 py-1 rounded-md font-mono transition-colors";
+            }
+        }
+
+        function updateSessionInfo() {
+            const infoDiv = document.getElementById('sessionInfo');
+            const startDisplay = document.getElementById('startTimeDisplay');
+            const startTime = getSessionStartTime();
+            
+            if (startTime) {
+                infoDiv.classList.remove('hidden');
+                
+                const date = new Date(startTime);
+                let hours = date.getHours();
+                let minutes = date.getMinutes();
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12;
+                const strTime = hours + ':' + minutes.toString().padStart(2, '0') + ' ' + ampm;
+                
+                startDisplay.innerText = strTime;
+            } else {
+                infoDiv.classList.add('hidden');
+                startDisplay.innerText = "Waiting...";
+            }
+        }
+
+        function formatTime(minutesOffset) {
+            const startTime = getSessionStartTime();
+            
+            if (!startTime) {
+                return "--:--";
+            }
+
+            const timeAtOffset = new Date(startTime + minutesOffset * 60000);
+            let hour = timeAtOffset.getHours();
+            let min = timeAtOffset.getMinutes();
+            let hour12 = hour % 12; 
+            hour12 = hour12 ? hour12 : 12; 
+            
+            return `${hour12}:${min.toString().padStart(2, '0')}`;
+        }
+
+        init();
+    </script>
+</body>
+</html>

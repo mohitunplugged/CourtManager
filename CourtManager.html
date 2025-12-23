@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Court Manager Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+            background-color: #0f172a; /* Slate 900 */
+            color: #e2e8f0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        .player-card {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .player-card.active {
+            background-color: #059669; /* Emerald 600 */
+            color: white;
+            border-color: #34d399;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .game-card {
+            background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+        }
+        .tab-content {
+            display: none;
+            opacity: 0;
+            animation: fadeIn 0.2s ease-out forwards;
+        }
+        .tab-content.active-view {
+            display: block;
+        }
+        .nav-btn {
+            font-size: 0.7rem; 
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide {
+            animation: slideIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="pb-24">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-50 glass-panel shadow-xl border-b border-white/5 pb-2">
+        <div class="max-w-md mx-auto px-4 pt-3 pb-2 flex justify-between items-center">
+            <div>
+                <h1 class="text-lg font-bold text-white tracking-tight"><i class="fa-solid fa-shuttlecock mr-2 text-emerald-400"></i>Court Manager</h1>
+            </div>
+            <button onclick="resetSession()" class="text-xs bg-slate-800 hover:bg-slate-700 active:bg-slate-600 px-3 py-2 rounded-lg text-red-400 border border-slate-700 transition-colors">
+                <i class="fa-solid fa-rotate-right"></i>
+            </button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="max-w-md mx-auto px-4 mt-1">
+            <div class="grid grid-cols-3 gap-1 p-1 bg-slate-800/80 rounded-lg">
+                <button onclick="switchTab('app')" id="tab-app" class="nav-btn py-1.5 rounded-md text-white bg-slate-600 shadow-sm transition-all">
+                    Scheduler
+                </button>
+                <button onclick="switchTab('rules')" id="tab-rules" class="nav-btn py-1.5 rounded-md text-slate-400 hover:text-slate-200 transition-all">
+                    Rules
+                </button>
+                <button onclick="switchTab('howto')" id="tab-howto" class="nav-btn py-1.5 rounded-md text-slate-400 hover:text-slate-200 transition-all">
+                    How-To
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto px-4 mt-6">
+
+        <!-- APP VIEW -->
+        <div id="view-app" class="tab-content active-view space-y-6">
+            <!-- Roster Section -->
+            <section>
+                <div class="flex justify-between items-end mb-3">
+                    <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500">Live Roster</h2>
+                    <span id="playerCount" class="text-[10px] bg-slate-800 border border-slate-700 text-slate-400 px-2 py-1 rounded-md font-mono">0/10 Checked In</span>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2" id="rosterGrid">
+                    <!-- Players injected by JS -->
+                </div>
+                <div class="flex items-center mt-2 space-x-2">
+                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                    <p class="text-[10px] text-slate-500">Tap to check in. Red badge = Late Penalty.</p>
+                </div>
+            </section>
+
+            <!-- Stats Summary -->
+            <section class="glass-panel rounded-xl p-4 shadow-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500">Distribution</h2>
+                    <div class="text-[10px] text-slate-500 bg-slate-800 px-2 py-1 rounded">Pro-Rata Logic</div>
+                </div>
+                <div id="statsGrid" class="space-y-2">
+                    <!-- Stats injected by JS -->
+                    <div class="text-center text-slate-500 py-4 text-xs">Waiting for check-ins...</div>
+                </div>
+            </section>
+
+            <!-- Timeline Section -->
+            <section>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xs font-bold uppercase tracking-widest text-slate-500">Timeline</h2>
+                    <button onclick="copySchedule()" class="text-xs bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors shadow-lg shadow-emerald-900/20">
+                        <i class="fa-regular fa-clipboard mr-1.5"></i>Copy
+                    </button>
+                </div>
+                <div id="timeline" class="space-y-3 relative pb-8">
+                    <!-- Timeline injected by JS -->
+                </div>
+            </section>
+        </div>
+
+        <!-- RULES VIEW -->
+        <div id="view-rules" class="tab-content space-y-6 text-slate-300">
+            
+            <section class="glass-panel rounded-xl p-5 border-l-4 border-amber-500">
+                <h2 class="text-white font-bold text-lg mb-2"><i class="fa-solid fa-gavel mr-2"></i>Late Policy</h2>
+                <p class="text-sm leading-relaxed text-slate-400">
+                    We are humane, but fair. If you are late, you get <strong>1 game docked</strong> for every 12 minutes missed.
+                </p>
+            </section>
+
+            <section>
+                <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Scheduling Logic</h3>
+                
+                <div class="space-y-3">
+                    <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                        <div class="flex items-start">
+                            <div class="bg-blue-900/50 p-2 rounded text-blue-400 mr-3 mt-0.5">
+                                <i class="fa-solid fa-stopwatch"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-bold text-white">The "First 4" Rule</h4>
+                                <p class="text-xs text-slate-400 mt-1">Game 1 (7:30 PM) is locked to the first 4 checked-in players.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                        <div class="flex items-start">
+                            <div class="bg-amber-900/50 p-2 rounded text-amber-400 mr-3 mt-0.5">
+                                <i class="fa-solid fa-user-clock"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-bold text-white">Queue & Penalties</h4>
+                                <p class="text-xs text-slate-400 mt-1">
+                                    Latecomers start at the back of the queue (Zero Rest Credit). You will likely wait 1 game before playing.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                        <div class="flex items-start">
+                            <div class="bg-purple-900/50 p-2 rounded text-purple-400 mr-3 mt-0.5">
+                                <i class="fa-solid fa-bolt"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-bold text-white">Streak Breaker Exception</h4>
+                                <p class="text-xs text-slate-400 mt-1">
+                                    <strong>The only exception:</strong> A latecomer can play immediately if it prevents someone else from playing 3 games in a row.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- HOW-TO VIEW -->
+        <div id="view-howto" class="tab-content space-y-6 text-slate-300">
+            
+            <section>
+                <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Quick Start Guide</h3>
+                
+                <div class="space-y-6">
+                    <!-- Step 1 -->
+                    <div class="relative pl-6 border-l border-emerald-500/30">
+                        <div class="absolute -left-1.5 top-0 w-3 h-3 rounded-full bg-emerald-500"></div>
+                        <h4 class="text-sm font-bold text-white mb-1">1. Check-in (Before 7:30 PM)</h4>
+                        <p class="text-xs text-slate-400 mb-2">Tap names on the <strong>Live Roster</strong> as people arrive.</p>
+                        <div class="bg-slate-800 p-3 rounded text-xs text-slate-300">
+                            <i class="fa-solid fa-circle-info text-blue-400 mr-1"></i> <strong>Tip:</strong> Tap them in the exact order they arrive! The first 4 names you tap are automatically locked into Game 1.
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="relative pl-6 border-l border-emerald-500/30">
+                        <div class="absolute -left-1.5 top-0 w-3 h-3 rounded-full bg-slate-600"></div>
+                        <h4 class="text-sm font-bold text-white mb-1">2. Late Arrivals</h4>
+                        <p class="text-xs text-slate-400 mb-2">If someone arrives at 7:50 PM:</p>
+                        <ul class="list-disc list-inside text-xs text-slate-400 space-y-1 ml-1">
+                            <li>Simply tap their name in the Roster to activate them.</li>
+                            <li>The schedule for <strong>future games</strong> will instantly recalculate.</li>
+                            <li>They will see a red badge (e.g. <span class="text-red-400 bg-red-900/30 px-1 rounded">-1 Game</span>) indicating their penalty.</li>
+                        </ul>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="relative pl-6 border-l border-emerald-500/30">
+                        <div class="absolute -left-1.5 top-0 w-3 h-3 rounded-full bg-slate-600"></div>
+                        <h4 class="text-sm font-bold text-white mb-1">3. Managing the Timeline</h4>
+                        <p class="text-xs text-slate-400 mb-2">The timeline generates automatically. Scroll down to see who plays when.</p>
+                        <div class="grid grid-cols-2 gap-2 mt-2">
+                            <div class="bg-slate-800 p-2 rounded text-xs border-l-2 border-emerald-500">
+                                <strong>Green Border</strong><br>Game is full (4 players)
+                            </div>
+                            <div class="bg-slate-800 p-2 rounded text-xs border-l-2 border-red-500">
+                                <strong>Red Border</strong><br>Waiting for more players
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 4 -->
+                    <div class="relative pl-6">
+                        <div class="absolute -left-1.5 top-0 w-3 h-3 rounded-full bg-slate-600"></div>
+                        <h4 class="text-sm font-bold text-white mb-1">4. Share the Plan</h4>
+                        <p class="text-xs text-slate-400">Click the <span class="bg-emerald-600 text-white px-1.5 py-0.5 rounded text-[10px]">Copy</span> button to save the entire schedule to your clipboard. You can paste it directly into your WhatsApp group.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="glass-panel rounded-xl p-4">
+                <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Legend</h3>
+                <div class="space-y-2 text-xs">
+                    <div class="flex items-center">
+                        <span class="w-20 text-emerald-400 font-bold">Green Bar</span>
+                        <span class="text-slate-400">Player has played 5+ games (High utilization)</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="w-20 text-amber-500 font-bold">Orange Bar</span>
+                        <span class="text-slate-400">Player has played ≤ 2 games (Low utilization)</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="w-20 text-red-400 font-bold">Red Badge</span>
+                        <span class="text-slate-400">Late penalty (-1 game per 12 mins late)</span>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+    </main>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- View Switching ---
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active-view'));
+            
+            // Reset all buttons
+            ['app', 'rules', 'howto'].forEach(name => {
+                document.getElementById(`tab-${name}`).className = "nav-btn py-1.5 rounded-md text-slate-400 hover:text-slate-200 transition-all";
+            });
+
+            // Activate selected
+            document.getElementById(`view-${tabName}`).classList.add('active-view');
+            document.getElementById(`tab-${tabName}`).className = "nav-btn py-1.5 rounded-md text-white bg-slate-600 shadow-sm transition-all";
+        }
+
+        // --- Configuration ---
+        const GAME_DURATION = 12; // minutes
+        const GAMES_BEFORE_BREAK = 3;
+        const BREAK_DURATION = 4; // minutes
+        const TOTAL_GAMES = 8; 
+        
+        // --- Initial Data ---
+        const initialPlayers = [
+            "Mohit Mahajan", "Ravi Sandhu", "Manoj Jain", "Nikhil Kacker",
+            "Gurmeet Singh", "Badal", "Rudra", "DK", "Goyal Sir", "Kulbir Singh"
+        ];
+
+        // --- State Management ---
+        let players = initialPlayers.map((name, index) => ({
+            id: index,
+            name: name,
+            present: false,
+            arrivalTime: null,
+            gamesPlayed: 0,
+            consecutiveStreak: 0,
+            restStreak: 0
+        }));
+
+        let schedule = [];
+
+        function init() {
+            renderRoster();
+            updateSchedule();
+        }
+
+        // --- Helper: Get Start Time for Today ---
+        function getSessionStartTime() {
+            const now = new Date();
+            const start = new Date(now);
+            start.setHours(19, 30, 0, 0); // 7:30 PM
+            return start.getTime();
+        }
+
+        // --- Helper: Get Minutes from Start ---
+        function getMinutesOffset(timestamp) {
+            if (!timestamp) return Infinity;
+            const start = getSessionStartTime();
+            return (timestamp - start) / 60000; // Convert ms to mins
+        }
+
+        // --- Core Logic: The "Late Penalty" Optimizer ---
+        function generateSchedule() {
+            let simPlayers = JSON.parse(JSON.stringify(players));
+            let newSchedule = [];
+            let currentTime = 0; // minutes from 7:30 PM
+
+            for (let gameIdx = 1; gameIdx <= TOTAL_GAMES; gameIdx++) {
+                
+                // Breaks
+                if (gameIdx > 1 && (gameIdx - 1) % GAMES_BEFORE_BREAK === 0) {
+                    newSchedule.push({
+                        type: 'break',
+                        startTime: currentTime,
+                        endTime: currentTime + BREAK_DURATION
+                    });
+                    currentTime += BREAK_DURATION;
+                }
+
+                // Filter Present
+                let availableCandidates = simPlayers.filter(p => p.present);
+                
+                // Sort by arrival time primarily for Game 1
+                availableCandidates.sort((a, b) => a.arrivalTime - b.arrivalTime);
+
+                let selectedIds = [];
+
+                if (availableCandidates.length < 4) {
+                    newSchedule.push({
+                        type: 'game',
+                        id: gameIdx,
+                        startTime: currentTime,
+                        endTime: currentTime + GAME_DURATION,
+                        players: [],
+                        error: "Need 4+ players"
+                    });
+                } else if (gameIdx === 1) {
+                    // HARD CONSTRAINT: First 4
+                    selectedIds = availableCandidates.slice(0, 4).map(p => p.id);
+                } else {
+                    // --- SCORING ALGORITHM ---
+                    let candidates = availableCandidates.map(p => {
+                        let score = 0;
+                        
+                        // 1. QUEUE LOGIC (Primary)
+                        score += (p.restStreak * 100);
+
+                        // 2. CONSECUTIVE PLAY (Streak Breaker Logic)
+                        if (p.consecutiveStreak === 1) score += 40; 
+                        if (p.consecutiveStreak >= 2) score -= 500; 
+
+                        // 3. TIE BREAKER (Minor)
+                        score -= (p.gamesPlayed * 5);
+                        score += Math.random() * 2;
+
+                        return { id: p.id, score: score };
+                    });
+
+                    candidates.sort((a, b) => b.score - a.score);
+                    selectedIds = candidates.slice(0, 4).map(c => c.id);
+                }
+
+                if (selectedIds.length === 4) {
+                    newSchedule.push({
+                        type: 'game',
+                        id: gameIdx,
+                        startTime: currentTime,
+                        endTime: currentTime + GAME_DURATION,
+                        players: selectedIds
+                    });
+
+                    simPlayers.forEach(p => {
+                        if (selectedIds.includes(p.id)) {
+                            p.gamesPlayed++;
+                            p.consecutiveStreak++;
+                            p.restStreak = 0;
+                        } else {
+                            if (p.present) {
+                                // CRITICAL UPDATE: Rest credit logic
+                                const arrivalOffset = getMinutesOffset(p.arrivalTime);
+                                if (arrivalOffset <= currentTime) {
+                                    p.consecutiveStreak = 0;
+                                    p.restStreak++;
+                                } else {
+                                    // Late arrival
+                                    p.consecutiveStreak = 0;
+                                    p.restStreak = 0; 
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                currentTime += GAME_DURATION;
+            }
+
+            return { schedule: newSchedule, finalStats: simPlayers };
+        }
+
+        // --- Interaction Handlers ---
+        function togglePlayer(id) {
+            const player = players.find(p => p.id === id);
+            player.present = !player.present;
+            if (player.present) player.arrivalTime = Date.now();
+            else player.arrivalTime = null;
+            renderRoster();
+            updateSchedule();
+        }
+
+        function updateSchedule() {
+            const result = generateSchedule();
+            schedule = result.schedule;
+            renderTimeline();
+            renderStats(result.finalStats);
+            updateHeaderCount();
+        }
+
+        function resetSession() {
+            if(confirm("Start new session? This clears all check-ins.")) {
+                players.forEach(p => {
+                    p.present = false;
+                    p.arrivalTime = null;
+                });
+                renderRoster();
+                updateSchedule();
+            }
+        }
+
+        function copySchedule() {
+            let text = "🏸 *Badminton Schedule* 🏸\n\n";
+            schedule.forEach(item => {
+                const timeStart = formatTime(item.startTime);
+                if (item.type === 'break') {
+                    text += `⏸ *Break* (${timeStart})\n\n`;
+                } else if (item.players.length > 0) {
+                    const pNames = item.players.map(id => {
+                        return players.find(p => p.id === id).name.split(" ")[0];
+                    }).join(", ");
+                    text += `G${item.id} (${timeStart}): ${pNames}\n`;
+                }
+            });
+            
+            const tempInput = document.createElement("textarea");
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+            
+            const btn = document.querySelector('button[onclick="copySchedule()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<i class="fa-solid fa-check mr-1.5"></i>Copied`;
+            btn.classList.add('bg-slate-700');
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.classList.remove('bg-slate-700');
+            }, 1500);
+        }
+
+        // --- Rendering ---
+        function renderRoster() {
+            const grid = document.getElementById('rosterGrid');
+            grid.innerHTML = '';
+            
+            const sortedPlayers = [...players].sort((a, b) => {
+                if (a.present && !b.present) return -1;
+                if (!a.present && b.present) return 1;
+                if (a.present && b.present) return a.arrivalTime - b.arrivalTime;
+                return a.id - b.id;
+            });
+
+            sortedPlayers.forEach(p => {
+                const btn = document.createElement('div');
+                let info = "";
+                
+                if (p.present) {
+                     const minutesLate = Math.max(0, getMinutesOffset(p.arrivalTime));
+                     const penalty = Math.floor(minutesLate / 12);
+                     
+                     if (penalty > 0) {
+                         info = `<span class="text-[9px] bg-red-900/50 text-red-300 px-1.5 py-0.5 rounded ml-2">-${penalty} Games</span>`;
+                     } else {
+                         const r = players.filter(pl => pl.present && pl.arrivalTime <= p.arrivalTime).length;
+                         info = `<span class="text-[9px] font-mono opacity-50 ml-2">#${r}</span>`;
+                     }
+                }
+
+                btn.className = `player-card p-3 rounded-lg border text-sm font-medium cursor-pointer flex justify-between items-center select-none ${p.present ? 'active border-emerald-500' : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:bg-slate-800'}`;
+                btn.onclick = () => togglePlayer(p.id);
+                
+                btn.innerHTML = `
+                    <div class="flex items-center">
+                        <i class="fa-solid ${p.present ? 'fa-circle-check' : 'fa-circle'} mr-2 text-[10px] ${p.present ? 'text-white' : 'text-slate-600'}"></i>
+                        <span>${p.name.split(' ')[0]} ${p.name.split(' ')[1] ? p.name.split(' ')[1][0] + '.' : ''}</span>
+                    </div>
+                    ${info}
+                `;
+                grid.appendChild(btn);
+            });
+        }
+
+        function renderTimeline() {
+            const container = document.getElementById('timeline');
+            container.innerHTML = '';
+            const presentCount = players.filter(p => p.present).length;
+
+            if (presentCount < 4) {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-10 opacity-40">
+                        <i class="fa-solid fa-users text-4xl mb-3"></i>
+                        <p class="text-sm">Need ${4 - presentCount} more players</p>
+                    </div>`;
+                return;
+            }
+
+            schedule.forEach((item, index) => {
+                const el = document.createElement('div');
+                const startTimeStr = formatTime(item.startTime);
+                el.style.animationDelay = `${index * 50}ms`;
+
+                if (item.type === 'break') {
+                    el.className = 'flex items-center justify-center py-3 my-2 bg-slate-800/30 rounded border-dashed border border-slate-700 text-slate-500 text-[10px] uppercase tracking-widest animate-slide';
+                    el.innerHTML = `<i class="fa-solid fa-clock mr-2"></i> Rest Break (${BREAK_DURATION}m) • ${startTimeStr}`;
+                } else {
+                    if (item.players.length < 4) {
+                        el.className = 'game-card p-3 rounded-lg border-l-2 border-red-500 opacity-60 animate-slide';
+                        el.innerHTML = `<div class="text-red-400 font-bold text-xs">Game ${item.id} • Not enough players</div>`;
+                    } else {
+                        const pNames = item.players.map(id => {
+                            const p = players.find(x => x.id === id);
+                            return p.name.split(' ')[0];
+                        });
+                        
+                        el.className = 'game-card p-3 rounded-lg border-l-2 border-emerald-500 shadow-lg animate-slide';
+                        el.innerHTML = `
+                            <div class="flex justify-between items-start mb-2 border-b border-white/5 pb-2">
+                                <div class="flex items-center">
+                                    <div class="bg-emerald-900/50 text-emerald-400 font-bold px-2 py-0.5 rounded text-xs mr-2">G${item.id}</div>
+                                    <span class="text-xs text-slate-400 font-mono">${startTimeStr}</span>
+                                </div>
+                                <span class="text-[10px] text-slate-500 uppercase tracking-wider">12 min</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-y-1 gap-x-4">
+                                ${pNames.map(name => `
+                                    <div class="flex items-center text-sm text-slate-200">
+                                        <i class="fa-solid fa-user text-[8px] text-slate-600 mr-2"></i>
+                                        ${name}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `;
+                    }
+                }
+                container.appendChild(el);
+            });
+        }
+
+        function renderStats(simPlayers) {
+            const grid = document.getElementById('statsGrid');
+            if (!simPlayers || simPlayers.filter(p => p.present).length === 0) {
+                grid.innerHTML = '<div class="text-center text-slate-500 py-4 text-xs">No active players</div>';
+                return;
+            }
+            grid.innerHTML = '';
+            const activeStats = simPlayers.filter(p => p.present).sort((a, b) => b.gamesPlayed - a.gamesPlayed);
+            activeStats.forEach(p => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between text-xs py-1.5 border-b border-white/5 last:border-0';
+                const maxGames = activeStats[0].gamesPlayed || 1;
+                const percentage = (p.gamesPlayed / maxGames) * 100;
+                let colorClass = "bg-slate-600";
+                if (p.gamesPlayed >= 5) colorClass = "bg-emerald-500";
+                else if (p.gamesPlayed <= 2) colorClass = "bg-amber-600";
+                row.innerHTML = `
+                    <div class="w-24 truncate text-slate-300 font-medium">${p.name.split(' ')[0]}</div>
+                    <div class="flex-1 mx-3 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                        <div class="h-full ${colorClass} rounded-full" style="width: ${percentage}%"></div>
+                    </div>
+                    <div class="w-6 text-right font-mono text-slate-400">${p.gamesPlayed}</div>
+                `;
+                grid.appendChild(row);
+            });
+        }
+
+        function updateHeaderCount() {
+            const count = players.filter(p => p.present).length;
+            const badge = document.getElementById('playerCount');
+            badge.innerText = `${count} Checked In`;
+            if (count >= 4) {
+                badge.className = "text-[10px] bg-emerald-900/30 border border-emerald-800 text-emerald-400 px-2 py-1 rounded-md font-mono transition-colors";
+            } else {
+                badge.className = "text-[10px] bg-red-900/20 border border-red-900 text-red-400 px-2 py-1 rounded-md font-mono transition-colors";
+            }
+        }
+
+        function formatTime(minutesOffset) {
+            const startHour = 19; const startMin = 30;
+            let totalMin = startMin + minutesOffset;
+            let hour = startHour + Math.floor(totalMin / 60);
+            let min = totalMin % 60;
+            let hour12 = hour % 12; hour12 = hour12 ? hour12 : 12; 
+            return `${hour12}:${min.toString().padStart(2, '0')}`;
+        }
+
+        init();
+    </script>
+</body>
+</html>
