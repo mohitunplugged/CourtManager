@@ -30,6 +30,15 @@ function getIndiaDate() {
     });
 }
 
+function getIndiaDayKey(date = new Date()) {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(date);
+}
+
 let activeSession = {
   id: uuidv4(), 
   sessionDate: getIndiaDate(),
@@ -38,6 +47,7 @@ let activeSession = {
   completedGames: [],
   schedule: [] 
 };
+let activeSessionDayKey = getIndiaDayKey();
 
 // Configuration
 const CONFIG = {
@@ -48,6 +58,42 @@ const CONFIG = {
 };
 
 // --- Helper Functions ---
+
+function clearLiveSessionState() {
+  activeSession.actualStartTime = null;
+  activeSession.completedGames = [];
+  activeSession.schedule = [];
+  activeSession.players.forEach(p => {
+      p.present = false;
+      p.arrivalTime = null;
+      p.gamesPlayed = 0;
+      p.consecutiveStreak = 0;
+      p.restStreak = 0;
+      p.latePenalty = 0;
+  });
+}
+
+async function resetLiveSession(reason) {
+  clearLiveSessionState();
+  activeSession.id = uuidv4();
+  activeSession.sessionDate = getIndiaDate();
+  activeSessionDayKey = getIndiaDayKey();
+
+  try {
+      await run(`INSERT INTO audit_logs (action, details) VALUES (?, ?)`, ['DAILY_RESET', reason]);
+  } catch (err) {
+      console.error('DB Save Error (Daily Reset):', err);
+  }
+
+  io.emit('state_update', activeSession);
+}
+
+function checkForNewDay() {
+  const todayKey = getIndiaDayKey();
+  if (todayKey !== activeSessionDayKey) {
+      void resetLiveSession(`Daily rollover to ${todayKey}`);
+  }
+}
 
 async function seedUsers() {
   console.log('Seeding fixed roster...');
@@ -214,6 +260,7 @@ function recalculateSchedule() {
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
   
+  checkForNewDay();
   activeSession.sessionDate = getIndiaDate();
   socket.emit('state_update', activeSession);
 
@@ -309,17 +356,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('reset_session', async () => {
-      activeSession.actualStartTime = null;
-      activeSession.completedGames = [];
-      activeSession.players.forEach(p => {
-          p.present = false;
-          p.arrivalTime = null;
-          p.gamesPlayed = 0;
-          p.consecutiveStreak = 0;
-          p.restStreak = 0;
-          p.latePenalty = 0;
-      });
-      activeSession.schedule = [];
+      clearLiveSessionState();
+      activeSession.sessionDate = getIndiaDate();
+      activeSessionDayKey = getIndiaDayKey();
       await run(`INSERT INTO audit_logs (action, details) VALUES (?, ?)`, ['SESSION_RESET', 'Admin reset the session']);
       io.emit('state_update', activeSession);
   });
@@ -374,3 +413,5 @@ seedUsers().then(() => {
       console.log(`Server running on port ${PORT}`);
     });
 });
+
+setInterval(checkForNewDay, 30 * 1000);
