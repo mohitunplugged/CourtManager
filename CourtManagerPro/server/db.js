@@ -2,7 +2,16 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 
-const dbPath = path.resolve(__dirname, 'courtmanager.db');
+const dbPath = process.env.SQLITE_DB_PATH
+  ? path.resolve(process.env.SQLITE_DB_PATH)
+  : process.env.RENDER_DISK_PATH
+    ? path.join(process.env.RENDER_DISK_PATH, 'courtmanager.db')
+    : path.resolve(__dirname, 'courtmanager.db');
+
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
 const db = new sqlite3.Database(dbPath);
 
 db.serialize(() => {
